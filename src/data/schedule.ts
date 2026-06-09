@@ -89,8 +89,11 @@ export function getWeekStart(d: Date): string {
  * Forgiving A→B→C→A rotation.
  *
  * 1. If there are already logs for `todayStr`, keep that workout day (session continuity).
- * 2. Otherwise use the last logged workout day and return the next in sequence.
- * 3. No prior logs → start with A.
+ * 2. Otherwise find the most recent logged workout, then count how many Kraft calendar
+ *    days (Mon/Wed/Fri per WEEK_SCHEDULE) fall strictly after that log up to and
+ *    including `todayStr`, and advance the rotation by that many steps.
+ *    This correctly handles past catch-up days and future preview days.
+ * 3. No prior logs → fall back to the schedule's own A/B/C assignment for that weekday.
  */
 export function resolveWorkoutDay(
   todayStr: string,
@@ -105,8 +108,30 @@ export function resolveWorkoutDay(
     .filter(l => l.date < todayStr)
     .sort((a, b) => b.date.localeCompare(a.date));
 
-  if (prev.length === 0) return 'A';
+  if (prev.length === 0) {
+    // No prior logs: use the schedule's default assignment for this weekday
+    const dow = new Date(todayStr + 'T12:00:00').getDay();
+    const entry = WEEK_SCHEDULE.find(e => e.dayOfWeek === dow && e.type === 'kraft');
+    return (entry?.workoutDay as WorkoutDay) ?? 'A';
+  }
 
+  const lastLog = prev[0];
   const seq: WorkoutDay[] = ['A', 'B', 'C'];
-  return seq[(seq.indexOf(prev[0].workoutDay) + 1) % 3];
+
+  // Kraft weekday indices from the schedule
+  const kraftDows = new Set(
+    WEEK_SCHEDULE.filter(e => e.type === 'kraft').map(e => e.dayOfWeek),
+  );
+
+  // Count Kraft calendar days strictly after lastLog.date up to and including todayStr
+  let steps = 0;
+  const cursor = new Date(lastLog.date + 'T12:00:00');
+  const end    = new Date(todayStr    + 'T12:00:00');
+  cursor.setDate(cursor.getDate() + 1);
+  while (cursor <= end) {
+    if (kraftDows.has(cursor.getDay())) steps++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return seq[(seq.indexOf(lastLog.workoutDay) + steps) % 3];
 }
