@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ProgressRing } from '../components/ProgressRing';
 import {
   getTodayPlan,
@@ -91,6 +91,31 @@ function hasAnyValidSet(inputs: SetInput[]): boolean {
   return inputs.some(s => s.kg !== '' && s.reps !== '');
 }
 
+// ─── Nav arrow ────────────────────────────────────────────────
+
+function NavArrow({ direction, onClick }: { direction: 'left' | 'right'; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={direction === 'left' ? 'Vorheriger Tag' : 'Nächster Tag'}
+      style={{
+        width: 44, height: 44, flexShrink: 0,
+        border: 'none', background: 'transparent',
+        color: 'var(--clr-accent)', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        borderRadius: 10, marginTop: 4,
+      }}
+    >
+      <svg width="11" height="18" viewBox="0 0 11 18" fill="none">
+        {direction === 'left'
+          ? <path d="M9 2L2 9L9 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          : <path d="M2 2L9 9L2 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        }
+      </svg>
+    </button>
+  );
+}
+
 // ─── Reusable card header ─────────────────────────────────────
 
 function CardHeader({
@@ -125,11 +150,12 @@ interface ExerciseCardProps {
   isLast: boolean;
   inputs: SetInput[];
   isSaved: boolean;
+  readOnly: boolean;
   onInputChange: (setIdx: number, field: 'kg' | 'reps', value: string) => void;
   onSave: () => void;
 }
 
-function ExerciseCard({ ex, index, isLast, inputs, isSaved, onInputChange, onSave }: ExerciseCardProps) {
+function ExerciseCard({ ex, index, isLast, inputs, isSaved, readOnly, onInputChange, onSave }: ExerciseCardProps) {
   const repsStr  = formatReps(ex);
   const rirStr   = formatRIR(ex);
   const pauseStr = formatPauseSec(ex.pauseSec);
@@ -138,14 +164,12 @@ function ExerciseCard({ ex, index, isLast, inputs, isSaved, onInputChange, onSav
 
   return (
     <div style={{ borderBottom: isLast ? undefined : '0.5px solid var(--clr-separator-2)' }}>
-      {/* Exercise header */}
       <div
         style={{
           display: 'flex', alignItems: 'flex-start', gap: 12,
-          padding: '12px 20px 8px',
+          padding: readOnly ? '14px 20px' : '12px 20px 8px',
         }}
       >
-        {/* Number badge */}
         <div
           style={{
             width: 26, height: 26, borderRadius: '50%', flexShrink: 0, marginTop: 1,
@@ -173,76 +197,63 @@ function ExerciseCard({ ex, index, isLast, inputs, isSaved, onInputChange, onSav
         </div>
       </div>
 
-      {/* Set rows */}
-      <div style={{ paddingInline: 20, paddingBottom: 4 }}>
-        {inputs.map((set, i) => (
-          <div
-            key={i}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              paddingBlock: 5,
-            }}
-          >
-            <span
-              className="footnote"
-              style={{ width: 48, color: 'var(--clr-text-3)', flexShrink: 0 }}
-            >
-              Satz {i + 1}
-            </span>
-            <input
-              className="num-input"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step={0.5}
-              placeholder="kg"
-              value={set.kg}
-              onChange={e => onInputChange(i, 'kg', e.target.value)}
-            />
-            <span style={{ color: 'var(--clr-text-3)', fontSize: 15, flexShrink: 0 }}>×</span>
-            <input
-              className="num-input"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              placeholder="Wdh."
-              value={set.reps}
-              onChange={e => onInputChange(i, 'reps', e.target.value)}
-            />
+      {!readOnly && (
+        <>
+          <div style={{ paddingInline: 20, paddingBottom: 4 }}>
+            {inputs.map((set, i) => (
+              <div
+                key={i}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBlock: 5 }}
+              >
+                <span
+                  className="footnote"
+                  style={{ width: 48, color: 'var(--clr-text-3)', flexShrink: 0 }}
+                >
+                  Satz {i + 1}
+                </span>
+                <input
+                  className="num-input"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step={0.5}
+                  placeholder="kg"
+                  value={set.kg}
+                  onChange={e => onInputChange(i, 'kg', e.target.value)}
+                />
+                <span style={{ color: 'var(--clr-text-3)', fontSize: 15, flexShrink: 0 }}>×</span>
+                <input
+                  className="num-input"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  placeholder="Wdh."
+                  value={set.reps}
+                  onChange={e => onInputChange(i, 'reps', e.target.value)}
+                />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* Save button */}
-      <div style={{ paddingInline: 20, paddingBottom: 14, paddingTop: 6 }}>
-        <button
-          onClick={onSave}
-          disabled={!canSave}
-          style={{
-            width: '100%',
-            height: 44,
-            borderRadius: 'var(--radius-sm)',
-            border: 'none',
-            background: !canSave
-              ? 'var(--clr-surface-2)'
-              : isSaved
-              ? 'rgba(48,209,88,0.15)'
-              : 'var(--clr-accent-soft)',
-            color: !canSave
-              ? 'var(--clr-text-3)'
-              : isSaved
-              ? '#30D158'
-              : 'var(--clr-accent)',
-            fontSize: 15,
-            fontWeight: 600,
-            fontFamily: 'inherit',
-            cursor: canSave ? 'pointer' : 'default',
-            transition: 'background 0.2s ease, color 0.2s ease',
-          }}
-        >
-          {isSaved ? '✓ Gespeichert – Aktualisieren?' : 'Notieren'}
-        </button>
-      </div>
+          <div style={{ paddingInline: 20, paddingBottom: 14, paddingTop: 6 }}>
+            <button
+              onClick={onSave}
+              disabled={!canSave}
+              style={{
+                width: '100%', height: 44,
+                borderRadius: 'var(--radius-sm)', border: 'none',
+                background: !canSave ? 'var(--clr-surface-2)' : isSaved ? 'rgba(48,209,88,0.15)' : 'var(--clr-accent-soft)',
+                color: !canSave ? 'var(--clr-text-3)' : isSaved ? '#30D158' : 'var(--clr-accent)',
+                fontSize: 15, fontWeight: 600, fontFamily: 'inherit',
+                cursor: canSave ? 'pointer' : 'default',
+                transition: 'background 0.2s ease, color 0.2s ease',
+              }}
+            >
+              {isSaved ? '✓ Gespeichert – Aktualisieren?' : 'Notieren'}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -253,25 +264,21 @@ interface KraftSectionProps {
   workoutDay: WorkoutDay;
   todayExLogs: ExerciseLogEntry[];
   exerciseInputs: ExInputMap;
+  readOnly: boolean;
   onInputChange: (exId: string, setIdx: number, field: 'kg' | 'reps', val: string) => void;
   onSaveExercise: (exId: string) => void;
 }
 
-function KraftSection({ workoutDay, todayExLogs, exerciseInputs, onInputChange, onSaveExercise }: KraftSectionProps) {
+function KraftSection({ workoutDay, todayExLogs, exerciseInputs, readOnly, onInputChange, onSaveExercise }: KraftSectionProps) {
   const training = TRAINING_DAYS.find(t => t.day === workoutDay)!;
   return (
     <div className="card" style={{ marginBottom: 16 }}>
       <CardHeader
         title="Training"
-        badge={`Kraft ${workoutDay}`}
-        badgeAccent
+        badge={readOnly ? `Vorschau · Kraft ${workoutDay}` : `Kraft ${workoutDay}`}
+        badgeAccent={!readOnly}
       />
-      <div
-        style={{
-          padding: '8px 20px 8px',
-          borderBottom: '0.5px solid var(--clr-separator-2)',
-        }}
-      >
+      <div style={{ padding: '8px 20px 8px', borderBottom: '0.5px solid var(--clr-separator-2)' }}>
         <span className="subhead" style={{ color: 'var(--clr-text-3)' }}>
           {training.focus} · {training.exercises.length} Übungen
         </span>
@@ -284,6 +291,7 @@ function KraftSection({ workoutDay, todayExLogs, exerciseInputs, onInputChange, 
           isLast={i === training.exercises.length - 1}
           inputs={exerciseInputs[ex.id] ?? Array.from({ length: ex.sets }, () => ({ kg: '', reps: '' }))}
           isSaved={todayExLogs.some(l => l.exerciseId === ex.id)}
+          readOnly={readOnly}
           onInputChange={(si, f, v) => onInputChange(ex.id, si, f, v)}
           onSave={() => onSaveExercise(ex.id)}
         />
@@ -299,11 +307,12 @@ interface LaufSectionProps {
   duration: string;
   feeling: RunLogEntry['feeling'] | null;
   isSaved: boolean;
+  readOnly: boolean;
   onDurationChange: (v: string) => void;
   onFeelingSelect: (f: RunLogEntry['feeling']) => void;
 }
 
-function LaufSection({ plan, duration, feeling, isSaved, onDurationChange, onFeelingSelect }: LaufSectionProps) {
+function LaufSection({ plan, duration, feeling, isSaved, readOnly, onDurationChange, onFeelingSelect }: LaufSectionProps) {
   const { runSpec } = plan;
   const durationLabel = runSpec.durationMinMin === runSpec.durationMinMax
     ? `${runSpec.durationMinMin} Min`
@@ -311,17 +320,15 @@ function LaufSection({ plan, duration, feeling, isSaved, onDurationChange, onFee
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <CardHeader title="Training" badge="Lauf optional" />
+      <CardHeader title="Training" badge={readOnly ? 'Vorschau · Lauf' : 'Lauf optional'} />
       <div style={{ padding: '16px 20px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* Zone 2 info */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div
             style={{
               width: 44, height: 44, borderRadius: 12, flexShrink: 0,
               background: 'var(--clr-accent-soft)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 22,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
             }}
           >
             🏃
@@ -335,69 +342,59 @@ function LaufSection({ plan, duration, feeling, isSaved, onDurationChange, onFee
         </div>
 
         {runSpec.hasSprints && (
-          <div
-            style={{
-              borderRadius: 'var(--radius-sm)', background: 'var(--clr-surface-2)',
-              padding: '10px 14px',
-            }}
-          >
+          <div style={{ borderRadius: 'var(--radius-sm)', background: 'var(--clr-surface-2)', padding: '10px 14px' }}>
             <span className="footnote" style={{ color: 'var(--clr-text-2)' }}>
               + 4× 20 Sek zügig am Ende (optionaler Sprints-Block)
             </span>
           </div>
         )}
 
-        {/* Duration input */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="callout" style={{ fontWeight: 500, color: 'var(--clr-text-2)' }}>
-            Dauer
-          </span>
-          <input
-            className="num-input"
-            style={{ width: 80 }}
-            type="number"
-            inputMode="numeric"
-            min={1}
-            placeholder="Min"
-            value={duration}
-            onChange={e => onDurationChange(e.target.value)}
-          />
-          <span className="footnote" style={{ color: 'var(--clr-text-3)' }}>Minuten</span>
-        </div>
+        {!readOnly && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span className="callout" style={{ fontWeight: 500, color: 'var(--clr-text-2)' }}>Dauer</span>
+              <input
+                className="num-input"
+                style={{ width: 80 }}
+                type="number"
+                inputMode="numeric"
+                min={1}
+                placeholder="Min"
+                value={duration}
+                onChange={e => onDurationChange(e.target.value)}
+              />
+              <span className="footnote" style={{ color: 'var(--clr-text-3)' }}>Minuten</span>
+            </div>
 
-        {/* Feeling toggle */}
-        <div>
-          <div className="footnote" style={{ marginBottom: 8, color: 'var(--clr-text-3)' }}>
-            Wie war's?
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              className={`feeling-btn${feeling === 'locker' ? ' selected-locker' : ''}`}
-              onClick={() => onFeelingSelect('locker')}
-            >
-              🙂 Locker
-            </button>
-            <button
-              className={`feeling-btn${feeling === 'anstrengend' ? ' selected-anstrengend' : ''}`}
-              onClick={() => onFeelingSelect('anstrengend')}
-            >
-              😤 Anstrengend
-            </button>
-          </div>
-        </div>
+            <div>
+              <div className="footnote" style={{ marginBottom: 8, color: 'var(--clr-text-3)' }}>Wie war's?</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  className={`feeling-btn${feeling === 'locker' ? ' selected-locker' : ''}`}
+                  onClick={() => onFeelingSelect('locker')}
+                >
+                  🙂 Locker
+                </button>
+                <button
+                  className={`feeling-btn${feeling === 'anstrengend' ? ' selected-anstrengend' : ''}`}
+                  onClick={() => onFeelingSelect('anstrengend')}
+                >
+                  😤 Anstrengend
+                </button>
+              </div>
+            </div>
 
-        {/* Save state */}
-        {isSaved && (
-          <div
-            style={{
-              borderRadius: 'var(--radius-sm)', background: 'rgba(48,209,88,0.12)',
-              padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8,
-            }}
-          >
-            <span style={{ color: '#30D158', fontSize: 15, fontWeight: 600 }}>
-              ✓ Lauf gespeichert
-            </span>
-          </div>
+            {isSaved && (
+              <div
+                style={{
+                  borderRadius: 'var(--radius-sm)', background: 'rgba(48,209,88,0.12)',
+                  padding: '10px 14px',
+                }}
+              >
+                <span style={{ color: '#30D158', fontSize: 15, fontWeight: 600 }}>✓ Lauf gespeichert</span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -443,25 +440,26 @@ interface SummaryCardProps {
   total: number;
   programWeek: number;
   isRunSaved: boolean;
+  isFuture: boolean;
 }
 
-function SummaryCard({ plan, workoutDay, completed, total, programWeek, isRunSaved }: SummaryCardProps) {
+function SummaryCard({ plan, workoutDay, completed, total, programWeek, isRunSaved, isFuture }: SummaryCardProps) {
   if (plan.type === 'ruhe') return null;
 
-  const isKraft   = plan.type === 'kraft';
-  const progress  = isKraft
+  const isKraft  = plan.type === 'kraft';
+  const progress = isFuture ? 0 : (isKraft
     ? (total > 0 ? completed / total : 0)
-    : (isRunSaved ? 1 : 0);
-  const label     = isKraft ? completed.toString() : (isRunSaved ? '1' : '0');
-  const sub       = isKraft ? `/ ${total}` : '/ 1';
-  const headline  = isKraft
+    : (isRunSaved ? 1 : 0));
+  const label    = isFuture ? '–' : (isKraft ? completed.toString() : (isRunSaved ? '1' : '0'));
+  const sub      = isKraft ? `/ ${total}` : '/ 1';
+  const headline = isKraft
     ? `Kraft ${workoutDay} · Woche ${programWeek}`
     : `Lauftag · Woche ${programWeek}`;
-  const sub2      = isKraft
-    ? (completed === total && total > 0
-        ? 'Alle Übungen notiert 🎉'
-        : `${completed} von ${total} Übungen notiert`)
-    : (isRunSaved ? 'Lauf gespeichert ✓' : 'Noch nicht geloggt');
+  const sub2     = isFuture
+    ? 'Einheit geplant'
+    : (isKraft
+      ? (completed === total && total > 0 ? 'Alle Übungen notiert 🎉' : `${completed} von ${total} Übungen notiert`)
+      : (isRunSaved ? 'Lauf gespeichert ✓' : 'Noch nicht geloggt'));
 
   return (
     <div
@@ -482,39 +480,41 @@ function SummaryCard({ plan, workoutDay, completed, total, programWeek, isRunSav
 interface MealsCardProps {
   isWorkday: boolean;
   mealDone: Record<MealType, boolean>;
+  readOnly: boolean;
   onToggle: (type: MealType, mealId: string) => void;
 }
 
-function MealsCard({ isWorkday, mealDone, onToggle }: MealsCardProps) {
+function MealsCard({ isWorkday, mealDone, readOnly, onToggle }: MealsCardProps) {
   const meals = getDefaultDailyMeals(isWorkday);
   const rows: { label: string; type: MealType; meal: (typeof meals)['fruehstueck'] }[] = [
-    { label: 'Frühstück',   type: 'fruehstueck',  meal: meals.fruehstueck  },
-    { label: 'Mittagessen', type: 'mittagessen',  meal: meals.mittagessen  },
-    { label: 'Abendessen',  type: 'abendessen',   meal: meals.abendessen   },
+    { label: 'Frühstück',   type: 'fruehstueck', meal: meals.fruehstueck },
+    { label: 'Mittagessen', type: 'mittagessen', meal: meals.mittagessen },
+    { label: 'Abendessen',  type: 'abendessen',  meal: meals.abendessen  },
   ];
+
+  const doneCount = Object.values(mealDone).filter(Boolean).length;
 
   return (
     <div className="card">
       <CardHeader
         title="Mahlzeiten"
-        badge={`${Object.values(mealDone).filter(Boolean).length} / 3`}
-        badgeAccent={Object.values(mealDone).every(Boolean)}
+        badge={readOnly ? undefined : `${doneCount} / 3`}
+        badgeAccent={!readOnly && doneCount === 3}
       />
       {rows.map(({ label, type, meal }, i) => {
-        const done = mealDone[type] ?? false;
+        const done = !readOnly && (mealDone[type] ?? false);
         return (
           <div
             key={type}
-            onClick={() => onToggle(type, meal.id)}
+            onClick={readOnly ? undefined : () => onToggle(type, meal.id)}
             style={{
               display: 'flex', alignItems: 'flex-start', gap: 14,
               padding: '13px 20px',
               borderBottom: i < rows.length - 1 ? '0.5px solid var(--clr-separator-2)' : undefined,
-              cursor: 'pointer',
+              cursor: readOnly ? 'default' : 'pointer',
               WebkitUserSelect: 'none',
             }}
           >
-            {/* Checkbox */}
             <div
               style={{
                 width: 24, height: 24, borderRadius: '50%', flexShrink: 0, marginTop: 1,
@@ -552,19 +552,31 @@ function MealsCard({ isWorkday, mealDone, onToggle }: MealsCardProps) {
 // ─── Main Page ────────────────────────────────────────────────
 
 export function HeutePage() {
-  const today      = new Date();
-  const todayStr   = toISODate(today);
-  const profile    = getProfile();
-  const startDate  = profile.programStartDate ?? getWeekStart(today);
-  const programWeek = getProgramWeek(today, startDate);
-  const calendarPlan = getTodayPlan(today, startDate);
-  const isWorkday  = (profile.workdays ?? []).includes(today.getDay());
+  const realToday = useMemo(() => new Date(), []);
 
-  // ── Forgiving rotation (computed once at mount) ────────────
+  const [offsetDays, setOffsetDays] = useState(0);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+
+  // Derived view date
+  const viewDate    = new Date(realToday);
+  viewDate.setDate(viewDate.getDate() + offsetDays);
+  const viewDateStr = toISODate(viewDate);
+  const isFuture    = offsetDays > 0;
+
+  // Profile & plan
+  const profile      = getProfile();
+  const startDate    = profile.programStartDate ?? getWeekStart(realToday);
+  const programWeek  = getProgramWeek(viewDate, startDate);
+  const calendarPlan = getTodayPlan(viewDate, startDate);
+  const isWorkday    = (profile.workdays ?? []).includes(viewDate.getDay());
+
+  // Forgiving rotation — re-computes when day changes; future days use fixed schedule slot
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const workoutDay = useMemo<WorkoutDay | null>(() => {
     if (calendarPlan.type !== 'kraft') return null;
-    return resolveWorkoutDay(todayStr, getExerciseLogs());
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (isFuture) return calendarPlan.workoutDay;
+    return resolveWorkoutDay(viewDateStr, getExerciseLogs());
+  }, [offsetDays]);
 
   const activeTraining = workoutDay
     ? (TRAINING_DAYS.find(t => t.day === workoutDay) ?? null)
@@ -572,37 +584,51 @@ export function HeutePage() {
 
   // ── Logging state ──────────────────────────────────────────
   const [todayExLogs, setTodayExLogs] = useState<ExerciseLogEntry[]>(() =>
-    getExerciseLogsForDate(todayStr)
+    getExerciseLogsForDate(viewDateStr)
   );
-
   const [exerciseInputs, setExerciseInputs] = useState<ExInputMap>(() => {
     if (!activeTraining) return {};
-    return initExerciseInputs(activeTraining.exercises, getExerciseLogsForDate(todayStr));
+    return initExerciseInputs(activeTraining.exercises, getExerciseLogsForDate(viewDateStr));
   });
-
   const [mealDone, setMealDone] = useState<Record<MealType, boolean>>(() => {
-    const logs = getMealLogsForDate(todayStr);
+    const logs = getMealLogsForDate(viewDateStr);
     return {
-      fruehstueck:  logs.find(l => l.mealType === 'fruehstueck')?.done  ?? false,
-      mittagessen:  logs.find(l => l.mealType === 'mittagessen')?.done  ?? false,
-      abendessen:   logs.find(l => l.mealType === 'abendessen')?.done   ?? false,
-      snack:        logs.find(l => l.mealType === 'snack')?.done        ?? false,
+      fruehstueck: logs.find(l => l.mealType === 'fruehstueck')?.done ?? false,
+      mittagessen: logs.find(l => l.mealType === 'mittagessen')?.done ?? false,
+      abendessen:  logs.find(l => l.mealType === 'abendessen')?.done  ?? false,
+      snack:       logs.find(l => l.mealType === 'snack')?.done       ?? false,
     };
   });
-
   const [runDuration, setRunDuration] = useState<string>(() => {
-    const saved = getRunLogs().find(l => l.date === todayStr);
+    const saved = getRunLogs().find(l => l.date === viewDateStr);
     return saved?.durationMin.toString() ?? '';
   });
-
   const [runFeeling, setRunFeeling] = useState<RunLogEntry['feeling'] | null>(() => {
-    const saved = getRunLogs().find(l => l.date === todayStr);
+    const saved = getRunLogs().find(l => l.date === viewDateStr);
     return saved?.feeling ?? null;
   });
-
   const [isRunSaved, setIsRunSaved] = useState(() =>
-    getRunLogs().some(l => l.date === todayStr)
+    getRunLogs().some(l => l.date === viewDateStr)
   );
+
+  // Re-initialise all logging state whenever the selected date changes
+  useEffect(() => {
+    const exLogs   = getExerciseLogsForDate(viewDateStr);
+    const training = workoutDay ? TRAINING_DAYS.find(t => t.day === workoutDay) ?? null : null;
+    setTodayExLogs(exLogs);
+    setExerciseInputs(training ? initExerciseInputs(training.exercises, exLogs) : {});
+    const mealLogs = getMealLogsForDate(viewDateStr);
+    setMealDone({
+      fruehstueck: mealLogs.find(l => l.mealType === 'fruehstueck')?.done ?? false,
+      mittagessen: mealLogs.find(l => l.mealType === 'mittagessen')?.done ?? false,
+      abendessen:  mealLogs.find(l => l.mealType === 'abendessen')?.done  ?? false,
+      snack:       mealLogs.find(l => l.mealType === 'snack')?.done       ?? false,
+    });
+    const savedRun = getRunLogs().find(l => l.date === viewDateStr);
+    setRunDuration(savedRun?.durationMin.toString() ?? '');
+    setRunFeeling(savedRun?.feeling ?? null);
+    setIsRunSaved(!!savedRun);
+  }, [viewDateStr, workoutDay]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Handlers ───────────────────────────────────────────────
 
@@ -621,13 +647,13 @@ export function HeutePage() {
       .map(s => ({ weightKg: parseFloat(s.kg), reps: parseInt(s.reps, 10) }))
       .filter(s => !isNaN(s.weightKg) && !isNaN(s.reps));
     if (sets.length === 0) return;
-    saveExerciseLog(todayStr, workoutDay, exId, sets);
-    setTodayExLogs(getExerciseLogsForDate(todayStr));
+    saveExerciseLog(viewDateStr, workoutDay, exId, sets);
+    setTodayExLogs(getExerciseLogsForDate(viewDateStr));
   }
 
   function handleToggleMeal(type: MealType, mealId: string) {
     const next = !mealDone[type];
-    saveMealLog(todayStr, type, mealId, next);
+    saveMealLog(viewDateStr, type, mealId, next);
     setMealDone(prev => ({ ...prev, [type]: next }));
   }
 
@@ -635,7 +661,7 @@ export function HeutePage() {
     setRunDuration(val);
     const dur = parseInt(val, 10);
     if (!isNaN(dur) && dur > 0 && runFeeling) {
-      saveRunLog(todayStr, dur, runFeeling);
+      saveRunLog(viewDateStr, dur, runFeeling);
       setIsRunSaved(true);
     }
   }
@@ -644,8 +670,25 @@ export function HeutePage() {
     setRunFeeling(feeling);
     const dur = parseInt(runDuration, 10);
     if (!isNaN(dur) && dur > 0) {
-      saveRunLog(todayStr, dur, feeling);
+      saveRunLog(viewDateStr, dur, feeling);
       setIsRunSaved(true);
+    }
+  }
+
+  // ── Swipe ──────────────────────────────────────────────────
+
+  function handleTouchStart(e: React.TouchEvent) {
+    setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (!touchStart) return;
+    const dx = e.changedTouches[0].clientX - touchStart.x;
+    const dy = e.changedTouches[0].clientY - touchStart.y;
+    setTouchStart(null);
+    // Only trigger if horizontal swipe clearly dominates vertical scroll
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      setOffsetDays(o => o + (dx < 0 ? 1 : -1));
     }
   }
 
@@ -655,33 +698,44 @@ export function HeutePage() {
     ? activeTraining.exercises.filter(ex => todayExLogs.some(l => l.exerciseId === ex.id)).length
     : 0;
 
-  // ── Effective plan for display ─────────────────────────────
+  // ── Effective plan ─────────────────────────────────────────
   const effectivePlan: DaySchedule = workoutDay
     ? { type: 'kraft', workoutDay, training: activeTraining! }
     : calendarPlan;
 
-  // ── Render ─────────────────────────────────────────────────
-  const weekday = WEEKDAY_LABEL[today.getDay()];
-  const date    = `${today.getDate()}. ${MONTH_LABEL[today.getMonth()]}`;
+  // ── Title / subtitle ───────────────────────────────────────
+  const weekday  = WEEKDAY_LABEL[viewDate.getDay()];
+  const dateStr  = `${viewDate.getDate()}. ${MONTH_LABEL[viewDate.getMonth()]}`;
+  const title    =
+    offsetDays === 0  ? 'Heute'   :
+    offsetDays === -1 ? 'Gestern' :
+    offsetDays === 1  ? 'Morgen'  :
+    weekday;
+  const subtitle = (offsetDays >= -1 && offsetDays <= 1)
+    ? `${weekday}, ${dateStr}`
+    : dateStr;
 
+  // ── Render ─────────────────────────────────────────────────
   return (
     <div
       style={{
-        flex: 1,
-        overflowY: 'auto',
-        overflowX: 'hidden',
+        flex: 1, overflowY: 'auto', overflowX: 'hidden',
         WebkitOverflowScrolling: 'touch' as const,
         paddingTop: 'env(safe-area-inset-top, 0px)',
       }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       <div style={{ padding: '20px 20px 40px' }}>
 
-        {/* Large Title */}
-        <div style={{ marginBottom: 28 }}>
-          <h1 className="large-title" style={{ margin: 0 }}>Heute</h1>
-          <p className="subhead" style={{ margin: '4px 0 0', color: 'var(--clr-text-3)' }}>
-            {weekday}, {date}
-          </p>
+        {/* Navigation header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 28 }}>
+          <NavArrow direction="left" onClick={() => setOffsetDays(o => o - 1)} />
+          <div style={{ flex: 1, paddingInline: 4 }}>
+            <h1 className="large-title" style={{ margin: 0 }}>{title}</h1>
+            <p className="subhead" style={{ margin: '4px 0 0', color: 'var(--clr-text-3)' }}>{subtitle}</p>
+          </div>
+          <NavArrow direction="right" onClick={() => setOffsetDays(o => o + 1)} />
         </div>
 
         {/* Summary ring */}
@@ -692,6 +746,7 @@ export function HeutePage() {
           total={totalExercises}
           programWeek={programWeek}
           isRunSaved={isRunSaved}
+          isFuture={isFuture}
         />
 
         {/* Day-specific content */}
@@ -700,6 +755,7 @@ export function HeutePage() {
             workoutDay={workoutDay}
             todayExLogs={todayExLogs}
             exerciseInputs={exerciseInputs}
+            readOnly={isFuture}
             onInputChange={handleInputChange}
             onSaveExercise={handleSaveExercise}
           />
@@ -710,16 +766,18 @@ export function HeutePage() {
             duration={runDuration}
             feeling={runFeeling}
             isSaved={isRunSaved}
+            readOnly={isFuture}
             onDurationChange={handleRunDurationChange}
             onFeelingSelect={handleFeelingSelect}
           />
         )}
-        {calendarPlan.type === 'ruhe' && <RestCard today={today} />}
+        {calendarPlan.type === 'ruhe' && <RestCard today={realToday} />}
 
         {/* Meals */}
         <MealsCard
           isWorkday={isWorkday}
           mealDone={mealDone}
+          readOnly={isFuture}
           onToggle={handleToggleMeal}
         />
 
