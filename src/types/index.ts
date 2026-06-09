@@ -59,6 +59,20 @@ export type DaySchedule =
 
 export type MealType = 'fruehstueck' | 'mittagessen' | 'abendessen' | 'snack';
 
+export type IngredientCategory =
+  | 'fleisch-fisch'
+  | 'milch-eier'
+  | 'obst-gemuese'
+  | 'getreide'
+  | 'sonstiges';
+
+export interface MealIngredient {
+  item: string;
+  amount: number;
+  unit: 'g' | 'ml' | 'Stück';
+  category: IngredientCategory;
+}
+
 export interface MealNutrition {
   kcal: number;
   proteinG: number;
@@ -73,8 +87,19 @@ export interface Meal {
   description: string;
   /** Can be prepared quickly / taken to work */
   workdayFriendly: boolean;
+  isVegetarian: boolean;
   /** Rough estimates – displayed with "ca." prefix, not for tracking */
   nutrition: MealNutrition;
+  /** Per-serving shopping ingredients */
+  ingredients: MealIngredient[];
+}
+
+// ─── Weekly Plan ──────────────────────────────────────────────
+
+export interface WeekDayPlan {
+  fruehstueck: string;  // mealId
+  mittagessen: string;  // mealId
+  abendessen:  string;  // mealId
 }
 
 // ─── Profile ──────────────────────────────────────────────────

@@ -8,16 +8,19 @@ import type {
   SetLog,
   WorkoutDay,
   MealType,
+  WeekDayPlan,
 } from '../types';
 
 // ─── Storage keys ─────────────────────────────────────────────
 
 const KEY = {
-  PROFILE:        'fc:profile',
-  EXERCISE_LOGS:  'fc:exercise_logs',
-  RUN_LOGS:       'fc:run_logs',
-  WEEKLY_CHECKS:  'fc:weekly_checks',
-  MEAL_LOGS:      'fc:meal_logs',
+  PROFILE:          'fc:profile',
+  EXERCISE_LOGS:    'fc:exercise_logs',
+  RUN_LOGS:         'fc:run_logs',
+  WEEKLY_CHECKS:    'fc:weekly_checks',
+  MEAL_LOGS:        'fc:meal_logs',
+  WEEK_PLAN:        'fc:week_plan',
+  SHOPPING_CHECKED: 'fc:shopping_checked',
 } as const;
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -167,6 +170,28 @@ export function saveMealLog(
   }
   write(KEY.MEAL_LOGS, logs);
   return entry;
+}
+
+// ─── Weekly Plan ──────────────────────────────────────────────
+
+export function getWeekPlan(): Record<string, WeekDayPlan> {
+  return read<Record<string, WeekDayPlan>>(KEY.WEEK_PLAN, {});
+}
+
+export function saveWeekPlanDay(date: string, plan: WeekDayPlan): void {
+  const all = getWeekPlan();
+  all[date] = plan;
+  write(KEY.WEEK_PLAN, all);
+}
+
+// ─── Shopping List Checked Items ──────────────────────────────
+
+export function getShoppingChecked(): string[] {
+  return read<string[]>(KEY.SHOPPING_CHECKED, []);
+}
+
+export function saveShoppingChecked(checked: string[]): void {
+  write(KEY.SHOPPING_CHECKED, checked);
 }
 
 // ─── Export / Import ──────────────────────────────────────────
