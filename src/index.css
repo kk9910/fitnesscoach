@@ -201,3 +201,59 @@ body {
 .spring {
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* ─────────────────────────────────────────
+   Number Inputs (Logging)
+───────────────────────────────────────── */
+.num-input {
+  width: 72px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1.5px solid var(--clr-separator);
+  background: var(--clr-surface-2);
+  color: var(--clr-text-1);
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color 0.15s ease;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.num-input:focus {
+  border-color: var(--clr-accent);
+}
+.num-input::-webkit-outer-spin-button,
+.num-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+/* ─────────────────────────────────────────
+   Feeling Toggle (Lauf)
+───────────────────────────────────────── */
+.feeling-btn {
+  flex: 1;
+  height: 44px;
+  border-radius: 10px;
+  border: 1.5px solid var(--clr-separator);
+  background: var(--clr-surface-2);
+  color: var(--clr-text-2);
+  font-size: 15px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.feeling-btn.selected-locker {
+  background: rgba(48, 209, 88, 0.15);
+  border-color: #30D158;
+  color: #30D158;
+  font-weight: 600;
+}
+.feeling-btn.selected-anstrengend {
+  background: rgba(255, 159, 10, 0.15);
+  border-color: #FF9F0A;
+  color: #FF9F0A;
+  font-weight: 600;
+}

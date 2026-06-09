@@ -1,4 +1,4 @@
-import type { WeekScheduleEntry, DaySchedule, RunSpec } from '../types';
+import type { WeekScheduleEntry, DaySchedule, RunSpec, WorkoutDay, ExerciseLogEntry } from '../types';
 import { TRAINING_DAYS, RUN_PLAN } from './training';
 
 // ─────────────────────────────────────────────────────────────
@@ -75,4 +75,38 @@ export function dayScheduleLabel(plan: DaySchedule): string {
 /** ISO date string "YYYY-MM-DD" for a given Date. */
 export function toISODate(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+
+/** ISO date of the Monday of the week containing `d`. */
+export function getWeekStart(d: Date): string {
+  const copy = new Date(d);
+  const dow  = copy.getDay();
+  copy.setDate(copy.getDate() - (dow === 0 ? 6 : dow - 1));
+  return toISODate(copy);
+}
+
+/**
+ * Forgiving A→B→C→A rotation.
+ *
+ * 1. If there are already logs for `todayStr`, keep that workout day (session continuity).
+ * 2. Otherwise use the last logged workout day and return the next in sequence.
+ * 3. No prior logs → start with A.
+ */
+export function resolveWorkoutDay(
+  todayStr: string,
+  allExerciseLogs: ExerciseLogEntry[],
+): WorkoutDay {
+  // Already started today → stay consistent
+  const todayLog = allExerciseLogs.find(l => l.date === todayStr);
+  if (todayLog) return todayLog.workoutDay;
+
+  // Find most recent workout before today
+  const prev = allExerciseLogs
+    .filter(l => l.date < todayStr)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  if (prev.length === 0) return 'A';
+
+  const seq: WorkoutDay[] = ['A', 'B', 'C'];
+  return seq[(seq.indexOf(prev[0].workoutDay) + 1) % 3];
 }
