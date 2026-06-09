@@ -59,6 +59,13 @@ export type DaySchedule =
 
 export type MealType = 'fruehstueck' | 'mittagessen' | 'abendessen' | 'snack';
 
+export interface MealNutrition {
+  kcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+}
+
 export interface Meal {
   id: string;
   type: MealType;
@@ -66,6 +73,8 @@ export interface Meal {
   description: string;
   /** Can be prepared quickly / taken to work */
   workdayFriendly: boolean;
+  /** Rough estimates – displayed with "ca." prefix, not for tracking */
+  nutrition: MealNutrition;
 }
 
 // ─── Profile ──────────────────────────────────────────────────

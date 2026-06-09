@@ -9,7 +9,7 @@ import {
   toISODate,
 } from '../data/schedule';
 import { TRAINING_DAYS } from '../data/training';
-import { getDefaultDailyMeals } from '../data/meals';
+import { MEALS, getMealsOfType, getDefaultDailyMeals } from '../data/meals';
 import {
   getProfile,
   getExerciseLogs,
@@ -68,6 +68,25 @@ function formatPauseSec(sec: number): string {
   if (sec === 150) return '2–3 Min';
   if (sec >= 60 && sec % 60 === 0) return `${sec / 60} Min`;
   return `${sec} Sek`;
+}
+
+// ─── Meal state helpers ───────────────────────────────────────
+
+type MealSlotState = { done: boolean; mealId: string };
+
+function initMealSlots(dateStr: string, workday: boolean): Record<MealType, MealSlotState> {
+  const logs     = getMealLogsForDate(dateStr);
+  const defaults = getDefaultDailyMeals(workday);
+  const resolve  = (type: MealType, fallbackId: string): MealSlotState => ({
+    done:   logs.find(l => l.mealType === type)?.done   ?? false,
+    mealId: logs.find(l => l.mealType === type)?.mealId ?? fallbackId,
+  });
+  return {
+    fruehstueck: resolve('fruehstueck', defaults.fruehstueck.id),
+    mittagessen: resolve('mittagessen', defaults.mittagessen.id),
+    abendessen:  resolve('abendessen',  defaults.abendessen.id),
+    snack:       resolve('snack',       'sn-skyr'),
+  };
 }
 
 // ─── Exercise input state helpers ─────────────────────────────
@@ -150,12 +169,11 @@ interface ExerciseCardProps {
   isLast: boolean;
   inputs: SetInput[];
   isSaved: boolean;
-  readOnly: boolean;
   onInputChange: (setIdx: number, field: 'kg' | 'reps', value: string) => void;
   onSave: () => void;
 }
 
-function ExerciseCard({ ex, index, isLast, inputs, isSaved, readOnly, onInputChange, onSave }: ExerciseCardProps) {
+function ExerciseCard({ ex, index, isLast, inputs, isSaved, onInputChange, onSave }: ExerciseCardProps) {
   const repsStr  = formatReps(ex);
   const rirStr   = formatRIR(ex);
   const pauseStr = formatPauseSec(ex.pauseSec);
@@ -164,12 +182,7 @@ function ExerciseCard({ ex, index, isLast, inputs, isSaved, readOnly, onInputCha
 
   return (
     <div style={{ borderBottom: isLast ? undefined : '0.5px solid var(--clr-separator-2)' }}>
-      <div
-        style={{
-          display: 'flex', alignItems: 'flex-start', gap: 12,
-          padding: readOnly ? '14px 20px' : '12px 20px 8px',
-        }}
-      >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 20px 8px' }}>
         <div
           style={{
             width: 26, height: 26, borderRadius: '50%', flexShrink: 0, marginTop: 1,
@@ -197,63 +210,53 @@ function ExerciseCard({ ex, index, isLast, inputs, isSaved, readOnly, onInputCha
         </div>
       </div>
 
-      {!readOnly && (
-        <>
-          <div style={{ paddingInline: 20, paddingBottom: 4 }}>
-            {inputs.map((set, i) => (
-              <div
-                key={i}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBlock: 5 }}
-              >
-                <span
-                  className="footnote"
-                  style={{ width: 48, color: 'var(--clr-text-3)', flexShrink: 0 }}
-                >
-                  Satz {i + 1}
-                </span>
-                <input
-                  className="num-input"
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  step={0.5}
-                  placeholder="kg"
-                  value={set.kg}
-                  onChange={e => onInputChange(i, 'kg', e.target.value)}
-                />
-                <span style={{ color: 'var(--clr-text-3)', fontSize: 15, flexShrink: 0 }}>×</span>
-                <input
-                  className="num-input"
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  placeholder="Wdh."
-                  value={set.reps}
-                  onChange={e => onInputChange(i, 'reps', e.target.value)}
-                />
-              </div>
-            ))}
+      <div style={{ paddingInline: 20, paddingBottom: 4 }}>
+        {inputs.map((set, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBlock: 5 }}>
+            <span className="footnote" style={{ width: 48, color: 'var(--clr-text-3)', flexShrink: 0 }}>
+              Satz {i + 1}
+            </span>
+            <input
+              className="num-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step={0.5}
+              placeholder="kg"
+              value={set.kg}
+              onChange={e => onInputChange(i, 'kg', e.target.value)}
+            />
+            <span style={{ color: 'var(--clr-text-3)', fontSize: 15, flexShrink: 0 }}>×</span>
+            <input
+              className="num-input"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              placeholder="Wdh."
+              value={set.reps}
+              onChange={e => onInputChange(i, 'reps', e.target.value)}
+            />
           </div>
+        ))}
+      </div>
 
-          <div style={{ paddingInline: 20, paddingBottom: 14, paddingTop: 6 }}>
-            <button
-              onClick={onSave}
-              disabled={!canSave}
-              style={{
-                width: '100%', height: 44,
-                borderRadius: 'var(--radius-sm)', border: 'none',
-                background: !canSave ? 'var(--clr-surface-2)' : isSaved ? 'rgba(48,209,88,0.15)' : 'var(--clr-accent-soft)',
-                color: !canSave ? 'var(--clr-text-3)' : isSaved ? '#30D158' : 'var(--clr-accent)',
-                fontSize: 15, fontWeight: 600, fontFamily: 'inherit',
-                cursor: canSave ? 'pointer' : 'default',
-                transition: 'background 0.2s ease, color 0.2s ease',
-              }}
-            >
-              {isSaved ? '✓ Gespeichert – Aktualisieren?' : 'Notieren'}
-            </button>
-          </div>
-        </>
-      )}
+      <div style={{ paddingInline: 20, paddingBottom: 14, paddingTop: 6 }}>
+        <button
+          onClick={onSave}
+          disabled={!canSave}
+          style={{
+            width: '100%', height: 44,
+            borderRadius: 'var(--radius-sm)', border: 'none',
+            background: !canSave ? 'var(--clr-surface-2)' : isSaved ? 'rgba(48,209,88,0.15)' : 'var(--clr-accent-soft)',
+            color: !canSave ? 'var(--clr-text-3)' : isSaved ? '#30D158' : 'var(--clr-accent)',
+            fontSize: 15, fontWeight: 600, fontFamily: 'inherit',
+            cursor: canSave ? 'pointer' : 'default',
+            transition: 'background 0.2s ease, color 0.2s ease',
+          }}
+        >
+          {isSaved ? '✓ Gespeichert – Aktualisieren?' : 'Notieren'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -264,20 +267,15 @@ interface KraftSectionProps {
   workoutDay: WorkoutDay;
   todayExLogs: ExerciseLogEntry[];
   exerciseInputs: ExInputMap;
-  readOnly: boolean;
   onInputChange: (exId: string, setIdx: number, field: 'kg' | 'reps', val: string) => void;
   onSaveExercise: (exId: string) => void;
 }
 
-function KraftSection({ workoutDay, todayExLogs, exerciseInputs, readOnly, onInputChange, onSaveExercise }: KraftSectionProps) {
+function KraftSection({ workoutDay, todayExLogs, exerciseInputs, onInputChange, onSaveExercise }: KraftSectionProps) {
   const training = TRAINING_DAYS.find(t => t.day === workoutDay)!;
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <CardHeader
-        title="Training"
-        badge={readOnly ? `Vorschau · Kraft ${workoutDay}` : `Kraft ${workoutDay}`}
-        badgeAccent={!readOnly}
-      />
+      <CardHeader title="Training" badge={`Kraft ${workoutDay}`} badgeAccent />
       <div style={{ padding: '8px 20px 8px', borderBottom: '0.5px solid var(--clr-separator-2)' }}>
         <span className="subhead" style={{ color: 'var(--clr-text-3)' }}>
           {training.focus} · {training.exercises.length} Übungen
@@ -291,7 +289,6 @@ function KraftSection({ workoutDay, todayExLogs, exerciseInputs, readOnly, onInp
           isLast={i === training.exercises.length - 1}
           inputs={exerciseInputs[ex.id] ?? Array.from({ length: ex.sets }, () => ({ kg: '', reps: '' }))}
           isSaved={todayExLogs.some(l => l.exerciseId === ex.id)}
-          readOnly={readOnly}
           onInputChange={(si, f, v) => onInputChange(ex.id, si, f, v)}
           onSave={() => onSaveExercise(ex.id)}
         />
@@ -307,12 +304,11 @@ interface LaufSectionProps {
   duration: string;
   feeling: RunLogEntry['feeling'] | null;
   isSaved: boolean;
-  readOnly: boolean;
   onDurationChange: (v: string) => void;
   onFeelingSelect: (f: RunLogEntry['feeling']) => void;
 }
 
-function LaufSection({ plan, duration, feeling, isSaved, readOnly, onDurationChange, onFeelingSelect }: LaufSectionProps) {
+function LaufSection({ plan, duration, feeling, isSaved, onDurationChange, onFeelingSelect }: LaufSectionProps) {
   const { runSpec } = plan;
   const durationLabel = runSpec.durationMinMin === runSpec.durationMinMax
     ? `${runSpec.durationMinMin} Min`
@@ -320,7 +316,7 @@ function LaufSection({ plan, duration, feeling, isSaved, readOnly, onDurationCha
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <CardHeader title="Training" badge={readOnly ? 'Vorschau · Lauf' : 'Lauf optional'} />
+      <CardHeader title="Training" badge="Lauf optional" />
       <div style={{ padding: '16px 20px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -349,52 +345,43 @@ function LaufSection({ plan, duration, feeling, isSaved, readOnly, onDurationCha
           </div>
         )}
 
-        {!readOnly && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span className="callout" style={{ fontWeight: 500, color: 'var(--clr-text-2)' }}>Dauer</span>
-              <input
-                className="num-input"
-                style={{ width: 80 }}
-                type="number"
-                inputMode="numeric"
-                min={1}
-                placeholder="Min"
-                value={duration}
-                onChange={e => onDurationChange(e.target.value)}
-              />
-              <span className="footnote" style={{ color: 'var(--clr-text-3)' }}>Minuten</span>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span className="callout" style={{ fontWeight: 500, color: 'var(--clr-text-2)' }}>Dauer</span>
+          <input
+            className="num-input"
+            style={{ width: 80 }}
+            type="number"
+            inputMode="numeric"
+            min={1}
+            placeholder="Min"
+            value={duration}
+            onChange={e => onDurationChange(e.target.value)}
+          />
+          <span className="footnote" style={{ color: 'var(--clr-text-3)' }}>Minuten</span>
+        </div>
 
-            <div>
-              <div className="footnote" style={{ marginBottom: 8, color: 'var(--clr-text-3)' }}>Wie war's?</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  className={`feeling-btn${feeling === 'locker' ? ' selected-locker' : ''}`}
-                  onClick={() => onFeelingSelect('locker')}
-                >
-                  🙂 Locker
-                </button>
-                <button
-                  className={`feeling-btn${feeling === 'anstrengend' ? ' selected-anstrengend' : ''}`}
-                  onClick={() => onFeelingSelect('anstrengend')}
-                >
-                  😤 Anstrengend
-                </button>
-              </div>
-            </div>
+        <div>
+          <div className="footnote" style={{ marginBottom: 8, color: 'var(--clr-text-3)' }}>Wie war's?</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className={`feeling-btn${feeling === 'locker' ? ' selected-locker' : ''}`}
+              onClick={() => onFeelingSelect('locker')}
+            >
+              🙂 Locker
+            </button>
+            <button
+              className={`feeling-btn${feeling === 'anstrengend' ? ' selected-anstrengend' : ''}`}
+              onClick={() => onFeelingSelect('anstrengend')}
+            >
+              😤 Anstrengend
+            </button>
+          </div>
+        </div>
 
-            {isSaved && (
-              <div
-                style={{
-                  borderRadius: 'var(--radius-sm)', background: 'rgba(48,209,88,0.12)',
-                  padding: '10px 14px',
-                }}
-              >
-                <span style={{ color: '#30D158', fontSize: 15, fontWeight: 600 }}>✓ Lauf gespeichert</span>
-              </div>
-            )}
-          </>
+        {isSaved && (
+          <div style={{ borderRadius: 'var(--radius-sm)', background: 'rgba(48,209,88,0.12)', padding: '10px 14px' }}>
+            <span style={{ color: '#30D158', fontSize: 15, fontWeight: 600 }}>✓ Lauf gespeichert</span>
+          </div>
         )}
       </div>
     </div>
@@ -440,26 +427,21 @@ interface SummaryCardProps {
   total: number;
   programWeek: number;
   isRunSaved: boolean;
-  isFuture: boolean;
 }
 
-function SummaryCard({ plan, workoutDay, completed, total, programWeek, isRunSaved, isFuture }: SummaryCardProps) {
+function SummaryCard({ plan, workoutDay, completed, total, programWeek, isRunSaved }: SummaryCardProps) {
   if (plan.type === 'ruhe') return null;
 
   const isKraft  = plan.type === 'kraft';
-  const progress = isFuture ? 0 : (isKraft
-    ? (total > 0 ? completed / total : 0)
-    : (isRunSaved ? 1 : 0));
-  const label    = isFuture ? '–' : (isKraft ? completed.toString() : (isRunSaved ? '1' : '0'));
+  const progress = isKraft ? (total > 0 ? completed / total : 0) : (isRunSaved ? 1 : 0);
+  const label    = isKraft ? completed.toString() : (isRunSaved ? '1' : '0');
   const sub      = isKraft ? `/ ${total}` : '/ 1';
   const headline = isKraft
     ? `Kraft ${workoutDay} · Woche ${programWeek}`
     : `Lauftag · Woche ${programWeek}`;
-  const sub2     = isFuture
-    ? 'Einheit geplant'
-    : (isKraft
-      ? (completed === total && total > 0 ? 'Alle Übungen notiert 🎉' : `${completed} von ${total} Übungen notiert`)
-      : (isRunSaved ? 'Lauf gespeichert ✓' : 'Noch nicht geloggt'));
+  const sub2     = isKraft
+    ? (completed === total && total > 0 ? 'Alle Übungen notiert 🎉' : `${completed} von ${total} Übungen notiert`)
+    : (isRunSaved ? 'Lauf gespeichert ✓' : 'Noch nicht geloggt');
 
   return (
     <div
@@ -478,73 +460,185 @@ function SummaryCard({ plan, workoutDay, completed, total, programWeek, isRunSav
 // ─── Meals Card ───────────────────────────────────────────────
 
 interface MealsCardProps {
-  isWorkday: boolean;
-  mealDone: Record<MealType, boolean>;
-  readOnly: boolean;
-  onToggle: (type: MealType, mealId: string) => void;
+  mealSlots: Record<MealType, MealSlotState>;
+  onToggleDone: (type: MealType) => void;
+  onSwap: (type: MealType, newMealId: string) => void;
 }
 
-function MealsCard({ isWorkday, mealDone, readOnly, onToggle }: MealsCardProps) {
-  const meals = getDefaultDailyMeals(isWorkday);
-  const rows: { label: string; type: MealType; meal: (typeof meals)['fruehstueck'] }[] = [
-    { label: 'Frühstück',   type: 'fruehstueck', meal: meals.fruehstueck },
-    { label: 'Mittagessen', type: 'mittagessen', meal: meals.mittagessen },
-    { label: 'Abendessen',  type: 'abendessen',  meal: meals.abendessen  },
+function MealsCard({ mealSlots, onToggleDone, onSwap }: MealsCardProps) {
+  const [expanded, setExpanded] = useState<MealType | null>(null);
+
+  const rows: { label: string; type: MealType }[] = [
+    { label: 'Frühstück',   type: 'fruehstueck' },
+    { label: 'Mittagessen', type: 'mittagessen' },
+    { label: 'Abendessen',  type: 'abendessen'  },
   ];
 
-  const doneCount = Object.values(mealDone).filter(Boolean).length;
+  const doneCount = rows.filter(({ type }) => mealSlots[type].done).length;
+
+  // Daily nutrition total across the 3 main slots
+  const total = rows.reduce(
+    (acc, { type }) => {
+      const meal = MEALS.find(m => m.id === mealSlots[type].mealId);
+      if (!meal) return acc;
+      return {
+        kcal:     acc.kcal     + meal.nutrition.kcal,
+        proteinG: acc.proteinG + meal.nutrition.proteinG,
+        carbsG:   acc.carbsG   + meal.nutrition.carbsG,
+        fatG:     acc.fatG     + meal.nutrition.fatG,
+      };
+    },
+    { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
+  );
 
   return (
     <div className="card">
       <CardHeader
         title="Mahlzeiten"
-        badge={readOnly ? undefined : `${doneCount} / 3`}
-        badgeAccent={!readOnly && doneCount === 3}
+        badge={`${doneCount} / 3`}
+        badgeAccent={doneCount === 3}
       />
-      {rows.map(({ label, type, meal }, i) => {
-        const done = !readOnly && (mealDone[type] ?? false);
+
+      {rows.map(({ label, type }, rowIdx) => {
+        const slot         = mealSlots[type];
+        const meal         = MEALS.find(m => m.id === slot.mealId)!;
+        const alternatives = getMealsOfType(type);
+        const isExpanded   = expanded === type;
+        const isLastRow    = rowIdx === rows.length - 1;
+
         return (
           <div
             key={type}
-            onClick={readOnly ? undefined : () => onToggle(type, meal.id)}
-            style={{
-              display: 'flex', alignItems: 'flex-start', gap: 14,
-              padding: '13px 20px',
-              borderBottom: i < rows.length - 1 ? '0.5px solid var(--clr-separator-2)' : undefined,
-              cursor: readOnly ? 'default' : 'pointer',
-              WebkitUserSelect: 'none',
-            }}
+            style={{ borderBottom: (!isLastRow || isExpanded) ? '0.5px solid var(--clr-separator-2)' : undefined }}
           >
+            {/* Compact row */}
             <div
               style={{
-                width: 24, height: 24, borderRadius: '50%', flexShrink: 0, marginTop: 1,
-                border: done ? 'none' : '1.5px solid var(--clr-separator)',
-                background: done ? 'var(--clr-accent)' : 'transparent',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'background 0.2s ease, border 0.2s ease',
+                display: 'flex', alignItems: 'flex-start', gap: 14,
+                padding: '13px 20px',
+                cursor: 'pointer',
+                WebkitUserSelect: 'none',
               }}
+              onClick={() => setExpanded(isExpanded ? null : type)}
             >
-              {done && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
+              {/* Done circle — tap to toggle without expanding */}
               <div
-                className="callout"
+                onClick={e => { e.stopPropagation(); onToggleDone(type); }}
                 style={{
-                  fontWeight: 600,
-                  color: done ? 'var(--clr-text-3)' : 'var(--clr-text-1)',
-                  textDecoration: done ? 'line-through' : 'none',
-                  transition: 'color 0.2s ease',
+                  width: 24, height: 24, borderRadius: '50%', flexShrink: 0, marginTop: 2,
+                  border: slot.done ? 'none' : '1.5px solid var(--clr-separator)',
+                  background: slot.done ? 'var(--clr-accent)' : 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'background 0.2s ease',
+                  cursor: 'pointer',
                 }}
               >
-                {label} · {meal.name}
+                {slot.done && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
               </div>
-              <div className="footnote" style={{ marginTop: 3, color: 'var(--clr-text-3)' }}>
-                {meal.description}
+
+              {/* Meal info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  className="callout"
+                  style={{
+                    fontWeight: 600,
+                    color: slot.done ? 'var(--clr-text-3)' : 'var(--clr-text-1)',
+                    textDecoration: slot.done ? 'line-through' : 'none',
+                    transition: 'color 0.2s ease',
+                  }}
+                >
+                  {label} · {meal.name}
+                </div>
+                <div className="footnote" style={{ marginTop: 2, color: 'var(--clr-text-3)' }}>
+                  {meal.description}
+                </div>
+                <div className="caption" style={{ marginTop: 4, color: 'var(--clr-text-3)' }}>
+                  ca. {meal.nutrition.kcal} kcal · {meal.nutrition.proteinG}g E · {meal.nutrition.carbsG}g KH · {meal.nutrition.fatG}g F
+                </div>
               </div>
+
+              {/* Expand chevron */}
+              <svg
+                width="12" height="12" viewBox="0 0 12 12" fill="none"
+                style={{
+                  flexShrink: 0, marginTop: 7, color: 'var(--clr-text-3)',
+                  transform: isExpanded ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 0.2s ease',
+                }}
+              >
+                <path d="M2 4L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </div>
+
+            {/* Alternatives panel */}
+            {isExpanded && (
+              <div style={{ background: 'var(--clr-surface-2)', borderTop: '0.5px solid var(--clr-separator-2)' }}>
+                <div style={{ padding: '8px 20px 4px' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--clr-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Andere Option wählen
+                  </span>
+                </div>
+                {alternatives.map((alt) => {
+                  const isSelected = alt.id === slot.mealId;
+                  return (
+                    <div
+                      key={alt.id}
+                      onClick={() => { onSwap(type, alt.id); setExpanded(null); }}
+                      style={{
+                        display: 'flex', alignItems: 'flex-start', gap: 14,
+                        padding: '11px 20px',
+                        borderTop: '0.5px solid var(--clr-separator-2)',
+                        cursor: 'pointer',
+                        background: isSelected ? 'rgba(0,122,255,0.06)' : 'transparent',
+                        WebkitUserSelect: 'none',
+                      }}
+                    >
+                      {/* Radio dot */}
+                      <div
+                        style={{
+                          width: 20, height: 20, borderRadius: '50%', flexShrink: 0, marginTop: 2,
+                          border: isSelected ? 'none' : '1.5px solid var(--clr-separator)',
+                          background: isSelected ? 'var(--clr-accent)' : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        {isSelected && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          className="subhead"
+                          style={{ fontWeight: isSelected ? 600 : 400, color: isSelected ? 'var(--clr-accent)' : 'var(--clr-text-1)' }}
+                        >
+                          {alt.name}
+                        </div>
+                        <div className="caption" style={{ marginTop: 3, color: 'var(--clr-text-3)' }}>
+                          ca. {alt.nutrition.kcal} kcal · {alt.nutrition.proteinG}g E · {alt.nutrition.carbsG}g KH · {alt.nutrition.fatG}g F
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })}
+
+      {/* Daily nutrition total */}
+      <div
+        style={{
+          padding: '12px 20px',
+          borderTop: '0.5px solid var(--clr-separator)',
+          background: 'var(--clr-surface-2)',
+        }}
+      >
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--clr-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+          Tagessumme (ca.)
+        </div>
+        <div className="footnote" style={{ fontWeight: 500, color: 'var(--clr-text-2)' }}>
+          {total.kcal} kcal · {total.proteinG}g E · {total.carbsG}g KH · {total.fatG}g F
+        </div>
+      </div>
     </div>
   );
 }
@@ -561,7 +655,6 @@ export function HeutePage() {
   const viewDate    = new Date(realToday);
   viewDate.setDate(viewDate.getDate() + offsetDays);
   const viewDateStr = toISODate(viewDate);
-  const isFuture    = offsetDays > 0;
 
   // Profile & plan
   const profile      = getProfile();
@@ -570,11 +663,10 @@ export function HeutePage() {
   const calendarPlan = getTodayPlan(viewDate, startDate);
   const isWorkday    = (profile.workdays ?? []).includes(viewDate.getDay());
 
-  // Forgiving rotation — re-computes when day changes; future days use fixed schedule slot
+  // Forgiving rotation for all days (past, today, future)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const workoutDay = useMemo<WorkoutDay | null>(() => {
     if (calendarPlan.type !== 'kraft') return null;
-    if (isFuture) return calendarPlan.workoutDay;
     return resolveWorkoutDay(viewDateStr, getExerciseLogs());
   }, [offsetDays]);
 
@@ -590,15 +682,9 @@ export function HeutePage() {
     if (!activeTraining) return {};
     return initExerciseInputs(activeTraining.exercises, getExerciseLogsForDate(viewDateStr));
   });
-  const [mealDone, setMealDone] = useState<Record<MealType, boolean>>(() => {
-    const logs = getMealLogsForDate(viewDateStr);
-    return {
-      fruehstueck: logs.find(l => l.mealType === 'fruehstueck')?.done ?? false,
-      mittagessen: logs.find(l => l.mealType === 'mittagessen')?.done ?? false,
-      abendessen:  logs.find(l => l.mealType === 'abendessen')?.done  ?? false,
-      snack:       logs.find(l => l.mealType === 'snack')?.done       ?? false,
-    };
-  });
+  const [mealSlots, setMealSlots] = useState<Record<MealType, MealSlotState>>(() =>
+    initMealSlots(viewDateStr, isWorkday)
+  );
   const [runDuration, setRunDuration] = useState<string>(() => {
     const saved = getRunLogs().find(l => l.date === viewDateStr);
     return saved?.durationMin.toString() ?? '';
@@ -611,19 +697,13 @@ export function HeutePage() {
     getRunLogs().some(l => l.date === viewDateStr)
   );
 
-  // Re-initialise all logging state whenever the selected date changes
+  // Re-initialise all logging state when the selected date changes
   useEffect(() => {
     const exLogs   = getExerciseLogsForDate(viewDateStr);
     const training = workoutDay ? TRAINING_DAYS.find(t => t.day === workoutDay) ?? null : null;
     setTodayExLogs(exLogs);
     setExerciseInputs(training ? initExerciseInputs(training.exercises, exLogs) : {});
-    const mealLogs = getMealLogsForDate(viewDateStr);
-    setMealDone({
-      fruehstueck: mealLogs.find(l => l.mealType === 'fruehstueck')?.done ?? false,
-      mittagessen: mealLogs.find(l => l.mealType === 'mittagessen')?.done ?? false,
-      abendessen:  mealLogs.find(l => l.mealType === 'abendessen')?.done  ?? false,
-      snack:       mealLogs.find(l => l.mealType === 'snack')?.done       ?? false,
-    });
+    setMealSlots(initMealSlots(viewDateStr, isWorkday));
     const savedRun = getRunLogs().find(l => l.date === viewDateStr);
     setRunDuration(savedRun?.durationMin.toString() ?? '');
     setRunFeeling(savedRun?.feeling ?? null);
@@ -651,10 +731,15 @@ export function HeutePage() {
     setTodayExLogs(getExerciseLogsForDate(viewDateStr));
   }
 
-  function handleToggleMeal(type: MealType, mealId: string) {
-    const next = !mealDone[type];
-    saveMealLog(viewDateStr, type, mealId, next);
-    setMealDone(prev => ({ ...prev, [type]: next }));
+  function handleToggleMeal(type: MealType) {
+    const next = !mealSlots[type].done;
+    saveMealLog(viewDateStr, type, mealSlots[type].mealId, next);
+    setMealSlots(prev => ({ ...prev, [type]: { ...prev[type], done: next } }));
+  }
+
+  function handleSwapMeal(type: MealType, newMealId: string) {
+    saveMealLog(viewDateStr, type, newMealId, mealSlots[type].done);
+    setMealSlots(prev => ({ ...prev, [type]: { ...prev[type], mealId: newMealId } }));
   }
 
   function handleRunDurationChange(val: string) {
@@ -686,7 +771,6 @@ export function HeutePage() {
     const dx = e.changedTouches[0].clientX - touchStart.x;
     const dy = e.changedTouches[0].clientY - touchStart.y;
     setTouchStart(null);
-    // Only trigger if horizontal swipe clearly dominates vertical scroll
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       setOffsetDays(o => o + (dx < 0 ? 1 : -1));
     }
@@ -746,7 +830,6 @@ export function HeutePage() {
           total={totalExercises}
           programWeek={programWeek}
           isRunSaved={isRunSaved}
-          isFuture={isFuture}
         />
 
         {/* Day-specific content */}
@@ -755,7 +838,6 @@ export function HeutePage() {
             workoutDay={workoutDay}
             todayExLogs={todayExLogs}
             exerciseInputs={exerciseInputs}
-            readOnly={isFuture}
             onInputChange={handleInputChange}
             onSaveExercise={handleSaveExercise}
           />
@@ -766,7 +848,6 @@ export function HeutePage() {
             duration={runDuration}
             feeling={runFeeling}
             isSaved={isRunSaved}
-            readOnly={isFuture}
             onDurationChange={handleRunDurationChange}
             onFeelingSelect={handleFeelingSelect}
           />
@@ -775,10 +856,9 @@ export function HeutePage() {
 
         {/* Meals */}
         <MealsCard
-          isWorkday={isWorkday}
-          mealDone={mealDone}
-          readOnly={isFuture}
-          onToggle={handleToggleMeal}
+          mealSlots={mealSlots}
+          onToggleDone={handleToggleMeal}
+          onSwap={handleSwapMeal}
         />
 
       </div>
