@@ -100,6 +100,7 @@ export interface WeekDayPlan {
   fruehstueck: string;  // mealId
   mittagessen: string;  // mealId
   abendessen:  string;  // mealId
+  snack:       string;  // mealId
 }
 
 // ─── Profile ──────────────────────────────────────────────────
@@ -108,6 +109,8 @@ export interface Profile {
   heightCm?: number;
   startWeightKg?: number;
   proteinTargetG?: number;
+  kcalTargetMin?: number;
+  kcalTargetMax?: number;
   /** ISO date "YYYY-MM-DD" – used to calculate current programme week */
   programStartDate?: string;
   /** JS day indices that are work-days (user eats out) */

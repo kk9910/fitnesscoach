@@ -12,7 +12,7 @@ import type { MealType, WeekDayPlan, IngredientCategory } from '../types';
 
 // ─── Types ────────────────────────────────────────────────────
 
-type MealSlotKey = 'fruehstueck' | 'mittagessen' | 'abendessen';
+type MealSlotKey = 'fruehstueck' | 'mittagessen' | 'abendessen' | 'snack';
 
 // ─── Constants ────────────────────────────────────────────────
 
@@ -23,6 +23,7 @@ const SLOT_LABEL: Record<MealSlotKey, string> = {
   fruehstueck: 'Frühstück',
   mittagessen: 'Mittag',
   abendessen:  'Abend',
+  snack:       'Snack',
 };
 
 const CATEGORY_ORDER: IngredientCategory[] = [
@@ -65,6 +66,9 @@ const DEFAULT_LUNCHES: string[] = [
 const DEFAULT_DINNERS: string[] = [
   'ab-omelett', 'ab-quark', 'ab-wrap', 'ab-brot', 'ab-omelett', 'ab-huettenkaese', 'ab-wrap',
 ];
+const DEFAULT_SNACKS: string[] = [
+  'sn-skyr', 'sn-skyr', 'sn-ei', 'sn-skyr', 'sn-quark-beeren', 'sn-skyr', 'sn-ei',
+];
 
 function generateDefaultWeekPlan(weekStart: string): Record<string, WeekDayPlan> {
   const plan: Record<string, WeekDayPlan> = {};
@@ -75,6 +79,7 @@ function generateDefaultWeekPlan(weekStart: string): Record<string, WeekDayPlan>
       fruehstueck: DEFAULT_BREAKFASTS[i],
       mittagessen: DEFAULT_LUNCHES[i],
       abendessen:  DEFAULT_DINNERS[i],
+      snack:       DEFAULT_SNACKS[i],
     };
   }
   return plan;
@@ -114,7 +119,7 @@ function buildShoppingItems(
     const dow = new Date(dateStr + 'T12:00:00').getDay();
     const isWorkday = workdays.includes(dow);
 
-    const mealIds: string[] = [plan.fruehstueck, plan.abendessen];
+    const mealIds: string[] = [plan.fruehstueck, plan.abendessen, plan.snack ?? 'sn-skyr'];
     if (!excludeWorkdayLunch || !isWorkday) mealIds.push(plan.mittagessen);
 
     for (const mealId of mealIds) {
@@ -198,7 +203,7 @@ interface WeekPlanSectionProps {
 function WeekPlanSection({ weekDates, weekPlan, workdays, onUpdateMeal, onLoadDefaults }: WeekPlanSectionProps) {
   const [expandedCell, setExpandedCell] = useState<{ date: string; slot: MealSlotKey } | null>(null);
 
-  const SLOTS: MealSlotKey[] = ['fruehstueck', 'mittagessen', 'abendessen'];
+  const SLOTS: MealSlotKey[] = ['fruehstueck', 'mittagessen', 'abendessen', 'snack'];
 
   return (
     <div>
@@ -264,7 +269,7 @@ function WeekPlanSection({ weekDates, weekPlan, workdays, onUpdateMeal, onLoadDe
 
             {/* Meal slots */}
             {SLOTS.map((slot, si) => {
-              const mealId = plan?.[slot] ?? '';
+              const mealId = (plan?.[slot] as string | undefined) ?? (slot === 'snack' ? 'sn-skyr' : '');
               const meal   = MEALS.find(m => m.id === mealId);
               const alts   = getMealsOfType(slot as MealType);
               const isExp  = expandedCell?.date === dateStr && expandedCell?.slot === slot;

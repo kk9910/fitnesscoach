@@ -463,20 +463,24 @@ interface MealsCardProps {
   mealSlots: Record<MealType, MealSlotState>;
   onToggleDone: (type: MealType) => void;
   onSwap: (type: MealType, newMealId: string) => void;
+  kcalMin: number;
+  kcalMax: number;
+  proteinTarget: number;
 }
 
-function MealsCard({ mealSlots, onToggleDone, onSwap }: MealsCardProps) {
+function MealsCard({ mealSlots, onToggleDone, onSwap, kcalMin, kcalMax, proteinTarget }: MealsCardProps) {
   const [expanded, setExpanded] = useState<MealType | null>(null);
 
   const rows: { label: string; type: MealType }[] = [
     { label: 'Frühstück',   type: 'fruehstueck' },
     { label: 'Mittagessen', type: 'mittagessen' },
     { label: 'Abendessen',  type: 'abendessen'  },
+    { label: 'Snack',       type: 'snack'        },
   ];
 
   const doneCount = rows.filter(({ type }) => mealSlots[type].done).length;
 
-  // Daily nutrition total across the 3 main slots
+  // Daily nutrition total across all 4 slots
   const total = rows.reduce(
     (acc, { type }) => {
       const meal = MEALS.find(m => m.id === mealSlots[type].mealId);
@@ -491,12 +495,15 @@ function MealsCard({ mealSlots, onToggleDone, onSwap }: MealsCardProps) {
     { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
   );
 
+  const kcalOk = total.kcal >= kcalMin && total.kcal <= kcalMax;
+  const proteinOk = total.proteinG >= proteinTarget;
+
   return (
     <div className="card">
       <CardHeader
         title="Mahlzeiten"
-        badge={`${doneCount} / 3`}
-        badgeAccent={doneCount === 3}
+        badge={`${doneCount} / 4`}
+        badgeAccent={doneCount === 4}
       />
 
       {rows.map(({ label, type }, rowIdx) => {
@@ -624,7 +631,7 @@ function MealsCard({ mealSlots, onToggleDone, onSwap }: MealsCardProps) {
         );
       })}
 
-      {/* Daily nutrition total */}
+      {/* Daily nutrition: planned vs target */}
       <div
         style={{
           padding: '12px 20px',
@@ -632,11 +639,22 @@ function MealsCard({ mealSlots, onToggleDone, onSwap }: MealsCardProps) {
           background: 'var(--clr-surface-2)',
         }}
       >
-        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--clr-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
-          Tagessumme (ca.)
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--clr-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Geplant (ca.)
+          </span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--clr-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Tagesziel (ca.)
+          </span>
         </div>
-        <div className="footnote" style={{ fontWeight: 500, color: 'var(--clr-text-2)' }}>
-          {total.kcal} kcal · {total.proteinG}g E · {total.carbsG}g KH · {total.fatG}g F
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <div className="footnote" style={{ fontWeight: 600, color: kcalOk ? '#30D158' : 'var(--clr-text-2)' }}>
+            {total.kcal} kcal · <span style={{ color: proteinOk ? '#30D158' : 'var(--clr-text-2)' }}>{total.proteinG}g E</span>
+            <span style={{ fontWeight: 400, color: 'var(--clr-text-3)' }}> · {total.carbsG}g KH · {total.fatG}g F</span>
+          </div>
+          <div className="footnote" style={{ color: 'var(--clr-text-3)', flexShrink: 0 }}>
+            {kcalMin}–{kcalMax} kcal · ~{proteinTarget}g E
+          </div>
         </div>
       </div>
     </div>
@@ -859,6 +877,9 @@ export function HeutePage() {
           mealSlots={mealSlots}
           onToggleDone={handleToggleMeal}
           onSwap={handleSwapMeal}
+          kcalMin={profile.kcalTargetMin ?? 2100}
+          kcalMax={profile.kcalTargetMax ?? 2300}
+          proteinTarget={profile.proteinTargetG ?? 150}
         />
 
       </div>
