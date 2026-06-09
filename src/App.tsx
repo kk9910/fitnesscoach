@@ -3,8 +3,9 @@ import { TabBar } from './components/TabBar';
 import { HeutePage } from './pages/HeutePage';
 import { PlanPage } from './pages/PlanPage';
 import { VerlaufPage } from './pages/VerlaufPage';
+import { ProfilPage } from './pages/ProfilPage';
 
-export type Tab = 'heute' | 'plan' | 'verlauf';
+export type Tab = 'heute' | 'plan' | 'verlauf' | 'profil';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('heute');
@@ -23,6 +24,7 @@ export default function App() {
         {activeTab === 'heute'   && <HeutePage   />}
         {activeTab === 'plan'    && <PlanPage    />}
         {activeTab === 'verlauf' && <VerlaufPage />}
+        {activeTab === 'profil'  && <ProfilPage  />}
       </main>
 
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />

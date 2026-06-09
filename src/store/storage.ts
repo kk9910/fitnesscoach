@@ -198,11 +198,13 @@ export function saveShoppingChecked(checked: string[]): void {
 
 export function exportData(): AppData {
   return {
-    profile:      getProfile(),
-    exerciseLogs: getExerciseLogs(),
-    runLogs:      getRunLogs(),
-    weeklyChecks: getWeeklyChecks(),
-    mealLogs:     getMealLogs(),
+    profile:          getProfile(),
+    exerciseLogs:     getExerciseLogs(),
+    runLogs:          getRunLogs(),
+    weeklyChecks:     getWeeklyChecks(),
+    mealLogs:         getMealLogs(),
+    weekPlan:         getWeekPlan(),
+    shoppingChecked:  getShoppingChecked(),
   };
 }
 
@@ -212,4 +214,6 @@ export function importData(data: AppData): void {
   write(KEY.RUN_LOGS,      data.runLogs);
   write(KEY.WEEKLY_CHECKS, data.weeklyChecks);
   write(KEY.MEAL_LOGS,     data.mealLogs);
+  if (data.weekPlan)         write(KEY.WEEK_PLAN,        data.weekPlan);
+  if (data.shoppingChecked)  write(KEY.SHOPPING_CHECKED, data.shoppingChecked);
 }

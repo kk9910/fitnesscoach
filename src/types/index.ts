@@ -160,9 +160,11 @@ export interface MealLogEntry {
 // ─── Full Export Shape ─────────────────────────────────────────
 
 export interface AppData {
-  profile: Profile;
-  exerciseLogs: ExerciseLogEntry[];
-  runLogs: RunLogEntry[];
-  weeklyChecks: WeeklyCheck[];
-  mealLogs: MealLogEntry[];
+  profile:        Profile;
+  exerciseLogs:   ExerciseLogEntry[];
+  runLogs:        RunLogEntry[];
+  weeklyChecks:   WeeklyCheck[];
+  mealLogs:       MealLogEntry[];
+  weekPlan?:      Record<string, WeekDayPlan>;
+  shoppingChecked?: string[];
 }

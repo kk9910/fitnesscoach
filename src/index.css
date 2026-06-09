@@ -188,6 +188,34 @@ body {
 }
 
 /* ─────────────────────────────────────────
+   Mobile polish
+───────────────────────────────────────── */
+
+/* Hide scrollbars on chip pickers while keeping scroll */
+.chips-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.chips-scroll::-webkit-scrollbar { display: none; }
+
+/* Prevent focus ring on tapped buttons (keep for keyboard nav) */
+button:focus:not(:focus-visible) { outline: none; }
+
+/* Inputs: consistent appearance on iOS */
+input[type="number"],
+input[type="date"],
+input[type="text"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Active-state feedback on tappable rows */
+.tap-row:active {
+  background: var(--clr-surface-2) !important;
+}
+
+/* ─────────────────────────────────────────
    Hairline Divider
 ───────────────────────────────────────── */
 .divider {

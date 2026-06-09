@@ -349,8 +349,8 @@ function ExerciseProgressSection() {
     <div>
       <div className="headline" style={{ marginBottom: 12 }}>Trainingsfortschritt</div>
 
-      {/* Exercise chip picker */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+      {/* Exercise chip picker – scrolls horizontally on narrow screens */}
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 16, paddingBottom: 4 }}>
         {ALL_EXERCISES.map(ex => (
           <button
             key={ex.id}
@@ -360,7 +360,7 @@ function ExerciseProgressSection() {
               background: selId === ex.id ? 'var(--clr-accent)' : 'var(--clr-surface-2)',
               color: selId === ex.id ? '#fff' : 'var(--clr-text-2)',
               fontSize: 13, fontWeight: selId === ex.id ? 600 : 400,
-              cursor: 'pointer',
+              cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap',
             }}
           >
             {ex.name}

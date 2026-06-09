@@ -1,6 +1,19 @@
 import type { Tab } from '../App';
 
-// ── SVG Icons (outline → active = heavier stroke + accent color) ──
+// ── SVG Icons ──────────────────────────────────────────────────
+
+function GearIcon({ active }: { active: boolean }) {
+  const sw = active ? 2.4 : 1.7;
+  return (
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+      <circle cx="13" cy="13" r="3.5" stroke="currentColor" strokeWidth={sw} />
+      <path
+        d="M13 3.5v2M13 20.5v2M3.5 13h2M20.5 13h2M6.22 6.22l1.42 1.42M18.36 18.36l1.42 1.42M6.22 19.78l1.42-1.42M18.36 7.64l1.42-1.42"
+        stroke="currentColor" strokeWidth={sw} strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 function RingIcon({ active }: { active: boolean }) {
   const sw = active ? 2.4 : 1.7;
@@ -44,6 +57,7 @@ const TABS: { id: Tab; label: string; Icon: React.FC<{ active: boolean }> }[] = 
   { id: 'heute',   label: 'Heute',   Icon: RingIcon     },
   { id: 'plan',    label: 'Plan',    Icon: CalendarIcon },
   { id: 'verlauf', label: 'Verlauf', Icon: ChartIcon    },
+  { id: 'profil',  label: 'Profil',  Icon: GearIcon     },
 ];
 
 interface TabBarProps {

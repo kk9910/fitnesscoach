@@ -639,22 +639,27 @@ function MealsCard({ mealSlots, onToggleDone, onSwap, kcalMin, kcalMax, proteinT
           background: 'var(--clr-surface-2)',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--clr-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Geplant (ca.)
+        {/* Row 1: planned total */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 3 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--clr-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
+            Geplant
           </span>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--clr-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Tagesziel (ca.)
+          <span className="footnote" style={{ fontWeight: 600, color: kcalOk ? '#30D158' : 'var(--clr-text-2)' }}>
+            ca. {total.kcal} kcal ·{' '}
+            <span style={{ color: proteinOk ? '#30D158' : 'var(--clr-text-2)' }}>{total.proteinG}g E</span>
+          </span>
+          <span className="footnote" style={{ color: 'var(--clr-text-3)' }}>
+            · {total.carbsG}g KH · {total.fatG}g F
           </span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-          <div className="footnote" style={{ fontWeight: 600, color: kcalOk ? '#30D158' : 'var(--clr-text-2)' }}>
-            {total.kcal} kcal · <span style={{ color: proteinOk ? '#30D158' : 'var(--clr-text-2)' }}>{total.proteinG}g E</span>
-            <span style={{ fontWeight: 400, color: 'var(--clr-text-3)' }}> · {total.carbsG}g KH · {total.fatG}g F</span>
-          </div>
-          <div className="footnote" style={{ color: 'var(--clr-text-3)', flexShrink: 0 }}>
-            {kcalMin}–{kcalMax} kcal · ~{proteinTarget}g E
-          </div>
+        {/* Row 2: target */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--clr-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
+            Ziel
+          </span>
+          <span className="footnote" style={{ color: 'var(--clr-text-3)' }}>
+            ca. {kcalMin}–{kcalMax} kcal · ~{proteinTarget}g E
+          </span>
         </div>
       </div>
     </div>
