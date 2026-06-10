@@ -485,7 +485,8 @@ interface MealsCardProps {
 }
 
 function MealsCard({ mealSlots, onToggleDone, onSwap, kcalMin, kcalMax, proteinTarget }: MealsCardProps) {
-  const [expanded, setExpanded] = useState<MealType | null>(null);
+  const [expanded,       setExpanded]       = useState<MealType | null>(null);
+  const [expandedRecipe, setExpandedRecipe] = useState<MealType | null>(null);
 
   const rows: { label: string; type: MealType }[] = [
     { label: 'Frühstück',   type: 'fruehstueck' },
@@ -567,14 +568,15 @@ function MealsCard({ mealSlots, onToggleDone, onSwap, kcalMin, kcalMax, proteinT
         }
 
         // ── Normal meal row ────────────────────────────────────
-        const meal         = MEALS.find(m => m.id === slot.mealId)!;
-        const alternatives = getMealsOfType(type);
-        const isExpanded   = expanded === type;
+        const meal           = MEALS.find(m => m.id === slot.mealId)!;
+        const alternatives   = getMealsOfType(type);
+        const isExpanded     = expanded === type;
+        const recipeOpen     = expandedRecipe === type;
 
         return (
           <div
             key={type}
-            style={{ borderBottom: (!isLastRow || isExpanded) ? '0.5px solid var(--clr-separator-2)' : undefined }}
+            style={{ borderBottom: (!isLastRow || isExpanded || recipeOpen) ? '0.5px solid var(--clr-separator-2)' : undefined }}
           >
             {/* Compact row */}
             <div
@@ -620,6 +622,21 @@ function MealsCard({ mealSlots, onToggleDone, onSwap, kcalMin, kcalMax, proteinT
                 <div className="caption" style={{ marginTop: 4, color: 'var(--clr-text-3)' }}>
                   ca. {meal.nutrition.kcal} kcal · {meal.nutrition.proteinG}g E · {meal.nutrition.carbsG}g KH · {meal.nutrition.fatG}g F
                 </div>
+                {meal.recipe && (
+                  <div
+                    onClick={e => { e.stopPropagation(); setExpandedRecipe(recipeOpen ? null : type); }}
+                    style={{
+                      marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 3,
+                      color: 'var(--clr-accent)', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                    }}
+                  >
+                    Rezept
+                    <svg width="9" height="9" viewBox="0 0 9 9" fill="none"
+                      style={{ transform: recipeOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}>
+                      <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                )}
               </div>
 
               {/* Expand chevron */}
@@ -635,6 +652,56 @@ function MealsCard({ mealSlots, onToggleDone, onSwap, kcalMin, kcalMax, proteinT
               </svg>
             </div>
 
+            {/* Recipe panel */}
+            {meal.recipe && recipeOpen && (
+              <div style={{
+                background: 'var(--clr-surface-2)',
+                borderTop: '0.5px solid var(--clr-separator-2)',
+                padding: '12px 20px 14px',
+              }}>
+                {meal.recipe.seasoning && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--clr-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                      Würzung
+                    </div>
+                    <div className="footnote" style={{ color: 'var(--clr-text-2)' }}>
+                      {meal.recipe.seasoning}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--clr-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                    Zubereitung
+                  </div>
+                  {meal.recipe.steps.map((step, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                      <div style={{
+                        width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                        background: 'var(--clr-accent-soft)', color: 'var(--clr-accent)',
+                        fontSize: 10, fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {i + 1}
+                      </div>
+                      <span className="footnote" style={{ color: 'var(--clr-text-2)', lineHeight: 1.45 }}>
+                        {step}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {meal.recipe.variation && (
+                  <div style={{
+                    marginTop: 8, padding: '8px 10px', borderRadius: 8,
+                    background: 'rgba(0,122,255,0.06)',
+                  }}>
+                    <span className="caption" style={{ color: 'var(--clr-accent-label)', lineHeight: 1.4 }}>
+                      {meal.recipe.variation}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Alternatives panel */}
             {isExpanded && (
               <div style={{ background: 'var(--clr-surface-2)', borderTop: '0.5px solid var(--clr-separator-2)' }}>
@@ -648,7 +715,7 @@ function MealsCard({ mealSlots, onToggleDone, onSwap, kcalMin, kcalMax, proteinT
                   return (
                     <div
                       key={alt.id}
-                      onClick={() => { onSwap(type, alt.id); setExpanded(null); }}
+                      onClick={() => { onSwap(type, alt.id); setExpanded(null); setExpandedRecipe(null); }}
                       style={{
                         display: 'flex', alignItems: 'flex-start', gap: 14,
                         padding: '11px 20px',

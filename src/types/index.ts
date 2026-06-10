@@ -80,6 +80,15 @@ export interface MealNutrition {
   fatG: number;
 }
 
+export interface RecipeData {
+  /** Würzung & Soße */
+  seasoning?: string;
+  /** Numbered preparation steps */
+  steps: string[];
+  /** Variation / Tipp / vegetarische Option */
+  variation?: string;
+}
+
 export interface Meal {
   id: string;
   type: MealType;
@@ -92,6 +101,7 @@ export interface Meal {
   nutrition: MealNutrition;
   /** Per-serving shopping ingredients */
   ingredients: MealIngredient[];
+  recipe?: RecipeData;
 }
 
 // ─── Weekly Plan ──────────────────────────────────────────────
