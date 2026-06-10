@@ -119,8 +119,11 @@ function buildShoppingItems(
     const dow = new Date(dateStr + 'T12:00:00').getDay();
     const isWorkday = workdays.includes(dow);
 
-    const mealIds: string[] = [plan.fruehstueck, plan.abendessen, plan.snack ?? 'sn-skyr'];
-    if (!excludeWorkdayLunch || !isWorkday) mealIds.push(plan.mittagessen);
+    // Abendessen + Snack always included; Frühstück + Mittag skipped on canteen workdays
+    const mealIds: string[] = [plan.abendessen, plan.snack ?? 'sn-skyr'];
+    if (!excludeWorkdayLunch || !isWorkday) {
+      mealIds.push(plan.fruehstueck, plan.mittagessen);
+    }
 
     for (const mealId of mealIds) {
       const meal = MEALS.find(m => m.id === mealId);
@@ -443,9 +446,9 @@ function ShoppingSection({ weekDates, weekPlan, workdays, weekLabel }: ShoppingS
             {excludeWorkdayLunch && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
           </div>
           <div>
-            <div className="subhead" style={{ fontWeight: 500 }}>Mittagessen an Arbeitstagen ausschließen</div>
+            <div className="subhead" style={{ fontWeight: 500 }}>Kantine-Tage ausschließen</div>
             <div className="caption" style={{ color: 'var(--clr-text-3)', marginTop: 2 }}>
-              An Arbeitstagen nicht kochen → Mittags-Zutaten weglassen
+              An Arbeitstagen Frühstück + Mittag weglassen (Kantine)
             </div>
           </div>
         </div>

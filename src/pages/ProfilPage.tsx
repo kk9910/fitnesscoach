@@ -26,7 +26,7 @@ function ProfileCard() {
   const [kcalMax,     setKcalMax]     = useState(initial.kcalTargetMax?.toString()   ?? '2300');
   const [protein,     setProtein]     = useState(initial.proteinTargetG?.toString()  ?? '150');
   const [startDate,   setStartDate]   = useState(initial.programStartDate            ?? '');
-  const [workdays,    setWorkdays]    = useState<number[]>(initial.workdays           ?? []);
+  const [workdays,    setWorkdays]    = useState<number[]>(initial.workdays           ?? [3, 4]);
   const [savedOk,     setSavedOk]     = useState(false);
 
   function toggleWorkday(dow: number) {

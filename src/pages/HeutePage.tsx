@@ -19,6 +19,7 @@ import {
   saveRunLog,
   getMealLogsForDate,
   saveMealLog,
+  getWeekPlan,
 } from '../store/storage';
 import type {
   Exercise,
@@ -72,20 +73,35 @@ function formatPauseSec(sec: number): string {
 
 // ─── Meal state helpers ───────────────────────────────────────
 
-type MealSlotState = { done: boolean; mealId: string };
+type MealSlotState = { done: boolean; mealId: string; isKantine?: boolean };
 
-function initMealSlots(dateStr: string, workday: boolean): Record<MealType, MealSlotState> {
+function initMealSlots(dateStr: string, isWorkday: boolean): Record<MealType, MealSlotState> {
   const logs     = getMealLogsForDate(dateStr);
-  const defaults = getDefaultDailyMeals(workday);
-  const resolve  = (type: MealType, fallbackId: string): MealSlotState => ({
-    done:   logs.find(l => l.mealType === type)?.done   ?? false,
-    mealId: logs.find(l => l.mealType === type)?.mealId ?? fallbackId,
-  });
+  const weekPlan = getWeekPlan();
+  const dayPlan  = weekPlan[dateStr];
+  const defaults = getDefaultDailyMeals(false);
+
+  // Priority: 1. saved meal log  2. week plan  3. default
+  const resolve = (type: MealType, fallbackId: string): MealSlotState => {
+    const log    = logs.find(l => l.mealType === type);
+    const planId = dayPlan?.[type as keyof typeof dayPlan] as string | undefined;
+    return {
+      done:   log?.done   ?? false,
+      mealId: log?.mealId ?? planId ?? fallbackId,
+    };
+  };
+
+  // Kantine: workday Frühstück + Mittag → show canteen placeholder, skip in shopping list
+  const kantineSlot = (type: MealType): MealSlotState => {
+    const log = logs.find(l => l.mealType === type);
+    return { done: log?.done ?? false, mealId: 'kantine', isKantine: true };
+  };
+
   return {
-    fruehstueck: resolve('fruehstueck', defaults.fruehstueck.id),
-    mittagessen: resolve('mittagessen', defaults.mittagessen.id),
-    abendessen:  resolve('abendessen',  defaults.abendessen.id),
-    snack:       resolve('snack',       'sn-skyr'),
+    fruehstueck: isWorkday ? kantineSlot('fruehstueck') : resolve('fruehstueck', defaults.fruehstueck.id),
+    mittagessen: isWorkday ? kantineSlot('mittagessen') : resolve('mittagessen', defaults.mittagessen.id),
+    abendessen:  resolve('abendessen', defaults.abendessen.id),
+    snack:       resolve('snack',      defaults.snack.id),
   };
 }
 
@@ -507,11 +523,53 @@ function MealsCard({ mealSlots, onToggleDone, onSwap, kcalMin, kcalMax, proteinT
       />
 
       {rows.map(({ label, type }, rowIdx) => {
-        const slot         = mealSlots[type];
+        const slot      = mealSlots[type];
+        const isLastRow = rowIdx === rows.length - 1;
+
+        // ── Kantine placeholder ────────────────────────────────
+        if (slot.isKantine) {
+          return (
+            <div
+              key={type}
+              style={{ borderBottom: isLastRow ? undefined : '0.5px solid var(--clr-separator-2)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '13px 20px' }}>
+                <div
+                  onClick={() => onToggleDone(type)}
+                  style={{
+                    width: 24, height: 24, borderRadius: '50%', flexShrink: 0, marginTop: 2,
+                    border: slot.done ? 'none' : '1.5px solid var(--clr-separator)',
+                    background: slot.done ? '#34C759' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {slot.done && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    className="callout"
+                    style={{
+                      fontWeight: 600,
+                      color: slot.done ? 'var(--clr-text-3)' : 'var(--clr-text-1)',
+                      textDecoration: slot.done ? 'line-through' : 'none',
+                    }}
+                  >
+                    {label} · Kantine
+                  </div>
+                  <div className="footnote" style={{ marginTop: 2, color: 'var(--clr-text-3)' }}>
+                    Proteinreich + Gemüse wählen
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // ── Normal meal row ────────────────────────────────────
         const meal         = MEALS.find(m => m.id === slot.mealId)!;
         const alternatives = getMealsOfType(type);
         const isExpanded   = expanded === type;
-        const isLastRow    = rowIdx === rows.length - 1;
 
         return (
           <div
@@ -684,7 +742,7 @@ export function HeutePage() {
   const startDate    = profile.programStartDate ?? getWeekStart(realToday);
   const programWeek  = getProgramWeek(viewDate, startDate);
   const calendarPlan = getTodayPlan(viewDate, startDate);
-  const isWorkday    = (profile.workdays ?? []).includes(viewDate.getDay());
+  const isWorkday    = (profile.workdays ?? [3, 4]).includes(viewDate.getDay());
 
   // Forgiving rotation for all days (past, today, future)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -755,8 +813,9 @@ export function HeutePage() {
   }
 
   function handleToggleMeal(type: MealType) {
-    const next = !mealSlots[type].done;
-    saveMealLog(viewDateStr, type, mealSlots[type].mealId, next);
+    const next    = !mealSlots[type].done;
+    const mealId  = mealSlots[type].isKantine ? 'kantine' : mealSlots[type].mealId;
+    saveMealLog(viewDateStr, type, mealId, next);
     setMealSlots(prev => ({ ...prev, [type]: { ...prev[type], done: next } }));
   }
 
